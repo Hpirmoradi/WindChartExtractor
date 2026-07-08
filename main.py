@@ -1,13 +1,12 @@
 """
 ==========================================
 Wind Chart Extractor
-Version 3.0
-Author : ChatGPT
+Main Program
+Version 1.0
 ==========================================
 """
 
 import time
-from pathlib import Path
 
 from config import (
     INPUT_FOLDER,
@@ -20,35 +19,44 @@ from detector import detect
 from cropper import save_chart
 
 
-# --------------------------------------------------
+# ---------------------------------------------------
 # برنامه اصلی
-# --------------------------------------------------
+# ---------------------------------------------------
 
 def main():
 
     start = time.time()
 
-    pdfs = sorted(Path(INPUT_FOLDER).glob("*.pdf"))
+    pdfs = sorted(INPUT_FOLDER.glob("*.pdf"))
 
     print("=" * 60)
-    print(" Wind Chart Extractor 3.0 ")
+    print("      Wind Chart Extractor")
     print("=" * 60)
     print()
 
-    print(f"تعداد فایل های PDF : {len(pdfs)}")
+    print("تعداد فایل ها :", len(pdfs))
     print()
 
-    total_images = 0
+    success = 0
     failed = []
+
+    # ----------------------------------------------
 
     for pdf in pdfs:
 
+        print("-" * 60)
+        print(pdf.name)
+
         pages = detect(pdf)
 
-        if len(pages) == 0:
+        if not pages:
 
+            print("✗ نمودار پیدا نشد")
             failed.append(pdf.name)
+            print()
             continue
+
+        print("صفحات :", pages)
 
         for page in pages:
 
@@ -56,24 +64,27 @@ def main():
 
                 save_chart(pdf, page)
 
-                total_images += 1
+                success += 1
 
             except Exception as e:
 
-                print("خطا :", pdf.name)
+                print("خطا :", e)
 
-                print(e)
+        print()
 
-    print()
+    # ----------------------------------------------
+
     print("=" * 60)
 
     print("پایان پردازش")
 
     print()
 
-    print("تعداد تصاویر :", total_images)
+    print("تعداد تصاویر استخراج شده :", success)
 
-    print("پوشه خروجی :")
+    print()
+
+    print("محل ذخیره :")
 
     print(OUTPUT_FOLDER.resolve())
 
@@ -81,11 +92,11 @@ def main():
 
         print()
 
-        print("فایل هایی که نمودار پیدا نشد :")
+        print("فایل های ناموفق")
 
         for f in failed:
 
-            print(" -", f)
+            print("-", f)
 
     if SHOW_TIME:
 
@@ -99,7 +110,7 @@ def main():
     print("=" * 60)
 
 
-# --------------------------------------------------
+# ---------------------------------------------------
 
 if __name__ == "__main__":
 
