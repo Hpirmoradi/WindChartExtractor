@@ -1,44 +1,173 @@
-# ==========================
-# cropper.py
-# رندر PDF + برش + ذخیره PNG
-# ==========================
+"""
+==========================================
+Wind Chart Extractor
+Cropper Module
+==========================================
+"""
 
+import cv2
 import fitz
-from PIL import Image
-from pathlib import Path
+import numpy as np
 
-from config import OUTPUT_FOLDER, DPI, CROP
+from PIL import Image
+
+from config import (
+    OUTPUT_FOLDER,
+    DPI,
+    ZOOM,
+    AUTO_CROP,
+    LEFT,
+    TOP,
+    RIGHT,
+    BOTTOM,
+    SAVE_FULL_PAGE,
+    FULLPAGE_FOLDER
+)
+
 from names import get_persian_name
 
 
+# ----------------------------------------------------------
+# رندر صفحه PDF
+# ----------------------------------------------------------
+
 def render_page(page):
 
-    zoom = DPI / 72
+    mat = fitz.Matrix(ZOOM, ZOOM)
 
-    matrix = fitz.Matrix(zoom, zoom)
-
-    pix = page.get_pixmap(matrix=matrix, alpha=False)
+    pix = page.get_pixmap(
+        matrix=mat,
+        alpha=False
+    )
 
     img = Image.frombytes(
         "RGB",
-        [pix.width, pix.height],
+        (pix.width, pix.height),
         pix.samples
     )
 
     return img
 
 
-def crop_image(img):
+# ----------------------------------------------------------
+# تبدیل PIL به OpenCV
+# ----------------------------------------------------------
 
-    width, height = img.size
+def pil_to_cv(img):
 
-    left = CROP["left"]
-    top = CROP["top"]
-    right = width - CROP["right_margin"]
-    bottom = min(CROP["bottom"], height)
+    return cv2.cvtColor(
+        np.array(img),
+        cv2.COLOR_RGB2BGR
+    )
 
-    return img.crop((left, top, right, bottom))
 
+# ----------------------------------------------------------
+# پیدا کردن محدوده نمودار
+# ----------------------------------------------------------
+
+def auto_crop(img):
+
+    cv = pil_to_cv(img)
+
+    gray = cv2.cvtColor(
+        cv,
+        cv2.COLOR_BGR2GRAY
+    )
+
+    _, th = cv2.threshold(
+        gray,
+        230,
+        255,
+        cv2.THRESH_BINARY_INV
+    )
+
+    contours, _ = cv2.findContours(
+        th,
+        cv2.RETR_EXTERNAL,
+        cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    if not contours:
+
+        return img
+
+    best = None
+    best_area = 0
+
+    h, w = gray.shape
+
+    for cnt in contours:
+
+        x, y, ww, hh = cv2.boundingRect(cnt)
+
+        area = ww * hh
+
+        if area < 150000:
+            continue
+
+        if ww < w * 0.55:
+            continue
+
+        if hh < h * 0.25:
+            continue
+
+        if area > best_area:
+
+            best_area = area
+            best = (x, y, ww, hh)
+
+    if best is None:
+
+        return img
+
+    x, y, ww, hh = best
+
+    pad = 25
+
+    x = max(0, x - pad)
+    y = max(0, y - pad)
+
+    ww = min(img.width - x, ww + pad * 2)
+    hh = min(img.height - y, hh + pad * 2)
+
+    return img.crop(
+        (
+            x,
+            y,
+            x + ww,
+            y + hh
+        )
+    )
+
+
+# ----------------------------------------------------------
+# برش دستی
+# ----------------------------------------------------------
+
+def manual_crop(img):
+
+    w, h = img.size
+
+    return img.crop(
+
+        (
+
+            LEFT,
+
+            TOP,
+
+            w - RIGHT,
+
+            min(BOTTOM, h)
+
+        )
+
+    )
+
+
+# ----------------------------------------------------------
+# ذخیره صفحه
+# ----------------------------------------------------------
 
 def save_chart(pdf_path, page_number):
 
@@ -48,19 +177,46 @@ def save_chart(pdf_path, page_number):
 
     img = render_page(page)
 
-    img = crop_image(img)
+    if SAVE_FULL_PAGE:
 
-    OUTPUT_FOLDER.mkdir(exist_ok=True)
+        full = FULLPAGE_FOLDER / (
+
+            pdf_path.stem +
+
+            "_page" +
+
+            str(page_number) +
+
+            ".png"
+
+        )
+
+        img.save(full)
+
+    if AUTO_CROP:
+
+        img = auto_crop(img)
+
+    else:
+
+        img = manual_crop(img)
 
     name = get_persian_name(
+
         pdf_path.name,
+
         page_number
+
     )
 
-    outfile = OUTPUT_FOLDER / f"{name}.png"
+    out = OUTPUT_FOLDER / (
 
-    img.save(outfile)
+        name + ".png"
 
-    print("✓", outfile.name)
+    )
+
+    img.save(out)
+
+    print("✓", out.name)
 
     doc.close()
