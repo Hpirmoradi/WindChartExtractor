@@ -10,16 +10,15 @@ import fitz
 from config import (
     KEYWORDS,
     FIXED_PAGE,
-    MULTI_PAGE,
-    VERBOSE
+    MULTI_PAGE
 )
 
 
-# ----------------------------------------------------------
-# بررسی وجود متن های نمودار
-# ----------------------------------------------------------
+# -----------------------------------------
+# بررسی وجود کلمات نمودار
+# -----------------------------------------
 
-def page_contains_chart(page):
+def page_has_chart(page):
 
     text = page.get_text("text").upper()
 
@@ -34,21 +33,55 @@ def page_contains_chart(page):
     return score >= 4
 
 
-# ----------------------------------------------------------
-# جستجوی کل فایل
-# ----------------------------------------------------------
+# -----------------------------------------
+# پیدا کردن صفحات نمودار
+# -----------------------------------------
 
-def scan_pdf(pdf_path):
+def detect(pdf_path):
 
     doc = fitz.open(pdf_path)
 
+    base = pdf_path.stem
+
+    if "_20" in base:
+
+        base = base.split("_20")[0]
+
     pages = []
+
+    # ----------------------------------
+    # فایل‌های چندصفحه‌ای
+    # ----------------------------------
+
+    if base in MULTI_PAGE:
+
+        pages = sorted(MULTI_PAGE[base].keys())
+
+        doc.close()
+
+        return pages
+
+    # ----------------------------------
+    # فایل‌های صفحه ثابت
+    # ----------------------------------
+
+    if base in FIXED_PAGE:
+
+        pages.append(FIXED_PAGE[base])
+
+        doc.close()
+
+        return pages
+
+    # ----------------------------------
+    # جستجوی خودکار
+    # ----------------------------------
 
     for i in range(doc.page_count):
 
         page = doc.load_page(i)
 
-        if page_contains_chart(page):
+        if page_has_chart(page):
 
             pages.append(i + 1)
 
@@ -57,86 +90,9 @@ def scan_pdf(pdf_path):
     return pages
 
 
-# ----------------------------------------------------------
-# تعیین صفحات خروجی
-# ----------------------------------------------------------
-
-def get_output_pages(pdf_path):
-
-    base = pdf_path.stem
-
-    if "_20" in base:
-
-        base = base.split("_20")[0]
-
-    # -------------------------
-    # فایل های مسیر
-    # -------------------------
-
-    if base in MULTI_PAGE:
-
-        return list(MULTI_PAGE[base].keys())
-
-    # -------------------------
-    # فایل های با صفحه ثابت
-    # -------------------------
-
-    if base in FIXED_PAGE:
-
-        return [FIXED_PAGE[base]]
-
-    # -------------------------
-    # در غیر اینصورت اسکن کن
-    # -------------------------
-
-    pages = scan_pdf(pdf_path)
-
-    return pages
-
-
-# ----------------------------------------------------------
-# چاپ نتیجه
-# ----------------------------------------------------------
-
-def print_result(pdf_path, pages):
-
-    if not VERBOSE:
-
-        return
-
-    print()
-
-    print("-" * 50)
-
-    print(pdf_path.name)
-
-    if len(pages) == 0:
-
-        print("✗ نمودار پیدا نشد")
-
-        return
-
-    for p in pages:
-
-        print(f"✓ صفحه {p}")
-
-
-# ----------------------------------------------------------
-# تابع اصلی
-# ----------------------------------------------------------
-
-def detect(pdf_path):
-
-    pages = get_output_pages(pdf_path)
-
-    print_result(pdf_path, pages)
-
-    return pages
-
-
-# ----------------------------------------------------------
+# -----------------------------------------
 # تست
-# ----------------------------------------------------------
+# -----------------------------------------
 
 if __name__ == "__main__":
 
@@ -146,14 +102,24 @@ if __name__ == "__main__":
 
     pdfs = sorted(INPUT_FOLDER.glob("*.pdf"))
 
-    print()
+    print("=" * 50)
 
-    print("=" * 60)
+    print("Detector Test")
 
-    print("Testing detector")
-
-    print("=" * 60)
+    print("=" * 50)
 
     for pdf in pdfs:
 
-        detect(pdf)
+        pages = detect(pdf)
+
+        print()
+
+        print(pdf.name)
+
+        if pages:
+
+            print("صفحات :", pages)
+
+        else:
+
+            print("نمودار پیدا نشد")
