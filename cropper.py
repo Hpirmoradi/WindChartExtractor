@@ -1,7 +1,7 @@
 """
 ==========================================
 Wind Chart Extractor
-Cropper (PyMuPDF + Pillow)
+Cropper Module
 ==========================================
 """
 
@@ -20,30 +20,65 @@ from config import (
 from names import get_persian_name
 
 
+# -------------------------------------------------
+# رندر صفحه PDF
+# -------------------------------------------------
+
+def render_page(page):
+
+    matrix = fitz.Matrix(ZOOM, ZOOM)
+
+    pix = page.get_pixmap(
+        matrix=matrix,
+        alpha=False
+    )
+
+    img = Image.frombytes(
+        "RGB",
+        (pix.width, pix.height),
+        pix.samples
+    )
+
+    return img
+
+
+# -------------------------------------------------
+# برش تصویر
+# -------------------------------------------------
+
+def crop_image(img):
+
+    width, height = img.size
+
+    left = LEFT
+    top = TOP
+
+    right = width - RIGHT
+    bottom = min(BOTTOM, height)
+
+    return img.crop(
+        (
+            left,
+            top,
+            right,
+            bottom
+        )
+    )
+
+
+# -------------------------------------------------
+# ذخیره تصویر
+# -------------------------------------------------
+
 def save_chart(pdf_path, page_number):
 
     doc = fitz.open(pdf_path)
 
     page = doc.load_page(page_number - 1)
 
-    mat = fitz.Matrix(ZOOM, ZOOM)
+    img = render_page(page)
 
-    pix = page.get_pixmap(matrix=mat, alpha=False)
-
-    img = Image.frombytes(
-        "RGB",
-        [pix.width, pix.height],
-        pix.samples
-    )
-
-    width, height = img.size
-
-    left = LEFT
-    top = TOP
-    right = width - RIGHT
-    bottom = min(BOTTOM, height)
-
-    chart = img.crop((left, top, right, bottom))
+    chart = crop_image(img)
 
     name = get_persian_name(
         pdf_path.name,
@@ -52,8 +87,30 @@ def save_chart(pdf_path, page_number):
 
     outfile = OUTPUT_FOLDER / f"{name}.png"
 
-    chart.save(outfile)
+    chart.save(
+        outfile,
+        format="PNG"
+    )
 
     print("✓", outfile.name)
 
     doc.close()
+
+
+# -------------------------------------------------
+# تست
+# -------------------------------------------------
+
+if __name__ == "__main__":
+
+    from pathlib import Path
+
+    from config import INPUT_FOLDER
+
+    pdf = sorted(
+        INPUT_FOLDER.glob("*.pdf")
+    )[0]
+
+    print(pdf.name)
+
+    save_chart(pdf,4)
