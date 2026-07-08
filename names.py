@@ -1,73 +1,162 @@
-# ==========================
-# names.py
-# تبدیل نام فایل به فارسی
-# ==========================
+"""
+==========================================
+Wind Chart Extractor
+Names Module
+==========================================
+"""
 
-FILE_NAMES = {
+from pathlib import Path
+from config import MULTI_PAGE
 
-    "Aboozar": "ابوذر",
+# --------------------------------------------------
+# نام‌های فارسی
+# --------------------------------------------------
 
-    "Bahregan": "بهرگان",
-
-    "Balal_Gas_Field": "بلال",
-
-    "Bushehr": "بوشهر",
-
-    "Froozan": "فروزان",
-
-    "Khark": "خارگ",
-
-    "Kish": "کیش",
-
-    "Lavan": "لاوان",
-
-    "Nasr2": "نصر",
-
-    "Qeshm": "قشم",
-
-    "Reshadat": "رشادت",
-
-    "Roudsar": "رودسر",
+PERSIAN_NAMES = {
 
     "Shafagh": "شفق",
 
+    "Balal_Gas_Field": "بلال",
+
+    "Nasr2": "نصر",
+
+    "Southpars": "پارس جنوبی",
+
+    "Qeshm": "قشم",
+
+    "Froozan": "فروزان",
+
     "Siri": "سیری",
 
-    "Southpars": "پارس جنوبی"
+    "Reshadat": "رشادت",
+
+    "Lavan": "لاوان",
+
+    "Kish": "کیش",
+
+    "Khark": "خارگ",
+
+    "Bahregan": "بهرگان",
+
+    "Aboozar": "ابوذر",
+
+    "Bushehr": "بوشهر",
+
+    "Roudsar": "رودسر"
 
 }
 
+# --------------------------------------------------
+# حذف تاریخ از نام فایل
+# --------------------------------------------------
 
-def get_base_name(file_name):
+def get_base_name(file_name: str):
 
-    name = file_name.replace(".pdf", "")
+    name = Path(file_name).stem
 
     if "_20" in name:
-        name = name[:name.index("_20")]
+
+        name = name.split("_20")[0]
 
     return name
 
+
+# --------------------------------------------------
+# آیا فایل مسیر است؟
+# --------------------------------------------------
+
+def is_route_file(base_name):
+
+    return base_name in MULTI_PAGE
+
+
+# --------------------------------------------------
+# نام فارسی فایل‌های معمولی
+# --------------------------------------------------
+
+def get_normal_name(base_name):
+
+    if base_name in PERSIAN_NAMES:
+
+        return PERSIAN_NAMES[base_name]
+
+    return base_name
+
+
+# --------------------------------------------------
+# نام فارسی فایل‌های مسیر
+# --------------------------------------------------
+
+def get_route_name(base_name, page_number):
+
+    if base_name not in MULTI_PAGE:
+
+        return None
+
+    pages = MULTI_PAGE[base_name]
+
+    if page_number in pages:
+
+        return pages[page_number]
+
+    return None
+
+
+# --------------------------------------------------
+# تابع اصلی
+# --------------------------------------------------
 
 def get_persian_name(file_name, page_number):
 
     base = get_base_name(file_name)
 
-    # مسیر عسلویه
-    if base == "Route_Asaluyeh_Anchorage_Phase11":
+    route_name = get_route_name(base, page_number)
 
-        if page_number == 6:
-            return "عسلویه"
+    if route_name:
 
-        if page_number == 7:
-            return "میانی عسلویه"
+        return route_name
 
-    # مسیر سلمان
-    if base == "Route_Lavan_Salman":
+    return get_normal_name(base)
 
-        if page_number == 7:
-            return "میانی سلمان"
 
-        if page_number == 8:
-            return "سلمان"
+# --------------------------------------------------
+# تست
+# --------------------------------------------------
 
-    return FILE_NAMES.get(base, base)
+if __name__ == "__main__":
+
+    tests = [
+
+        ("Shafagh_2026070804.pdf", 5),
+
+        ("Nasr2_2026070804.pdf", 4),
+
+        ("Balal_Gas_Field_2026070804.pdf", 5),
+
+        ("Route_Asaluyeh_Anchorage_Phase11_2026070804.pdf", 6),
+
+        ("Route_Asaluyeh_Anchorage_Phase11_2026070804.pdf", 7),
+
+        ("Route_Lavan_Salman_2026070801.pdf", 7),
+
+        ("Route_Lavan_Salman_2026070801.pdf", 8),
+
+    ]
+
+    print()
+
+    print("=" * 40)
+
+    for file_name, page in tests:
+
+        print(
+
+            file_name,
+
+            " ---> ",
+
+            get_persian_name(file_name, page)
+
+        )
+
+    print("=" * 40)
