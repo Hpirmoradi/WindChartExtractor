@@ -1,52 +1,106 @@
-# ==========================
-# main.py
-# برنامه اصلی
-# ==========================
+"""
+==========================================
+Wind Chart Extractor
+Version 3.0
+Author : ChatGPT
+==========================================
+"""
 
+import time
 from pathlib import Path
 
-from config import INPUT_FOLDER
-from detector import find_pages_for_file
+from config import (
+    INPUT_FOLDER,
+    OUTPUT_FOLDER,
+    SHOW_TIME
+)
+
+from detector import detect
+
 from cropper import save_chart
 
 
+# --------------------------------------------------
+# برنامه اصلی
+# --------------------------------------------------
+
 def main():
+
+    start = time.time()
 
     pdfs = sorted(Path(INPUT_FOLDER).glob("*.pdf"))
 
-    print("=" * 50)
-    print(f"تعداد PDFها : {len(pdfs)}")
-    print("=" * 50)
+    print("=" * 60)
+    print(" Wind Chart Extractor 3.0 ")
+    print("=" * 60)
+    print()
 
-    total = 0
+    print(f"تعداد فایل های PDF : {len(pdfs)}")
+    print()
+
+    total_images = 0
+    failed = []
 
     for pdf in pdfs:
 
-        print("\n" + "-" * 50)
-        print(pdf.name)
+        pages = detect(pdf)
 
-        pages = find_pages_for_file(pdf)
+        if len(pages) == 0:
 
-        if not pages:
-
-            print("✗ نمودار پیدا نشد")
+            failed.append(pdf.name)
             continue
 
         for page in pages:
 
-            print(f"صفحه {page}")
+            try:
 
-            save_chart(
-                pdf,
-                page
-            )
+                save_chart(pdf, page)
 
-            total += 1
+                total_images += 1
 
-    print("\n" + "=" * 50)
-    print(f"تعداد تصاویر ذخیره شده : {total}")
-    print("=" * 50)
+            except Exception as e:
 
+                print("خطا :", pdf.name)
+
+                print(e)
+
+    print()
+    print("=" * 60)
+
+    print("پایان پردازش")
+
+    print()
+
+    print("تعداد تصاویر :", total_images)
+
+    print("پوشه خروجی :")
+
+    print(OUTPUT_FOLDER.resolve())
+
+    if failed:
+
+        print()
+
+        print("فایل هایی که نمودار پیدا نشد :")
+
+        for f in failed:
+
+            print(" -", f)
+
+    if SHOW_TIME:
+
+        print()
+
+        print(
+            "زمان اجرا : %.2f ثانیه"
+            % (time.time() - start)
+        )
+
+    print("=" * 60)
+
+
+# --------------------------------------------------
 
 if __name__ == "__main__":
+
     main()
