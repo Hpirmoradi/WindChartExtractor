@@ -1,91 +1,159 @@
-# ==========================
-# detector.py
-# پیدا کردن صفحات نمودار باد
-# ==========================
+"""
+==========================================
+Wind Chart Extractor
+Detector Module
+==========================================
+"""
 
 import fitz
-from config import KEYWORDS
+
+from config import (
+    KEYWORDS,
+    FIXED_PAGE,
+    MULTI_PAGE,
+    VERBOSE
+)
 
 
-def is_chart_page(page):
+# ----------------------------------------------------------
+# بررسی وجود متن های نمودار
+# ----------------------------------------------------------
 
-    """
-    بررسی می‌کند آیا صفحه نمودار باد است یا خیر.
-    """
+def page_contains_chart(page):
 
-    text = page.get_text().upper()
+    text = page.get_text("text").upper()
 
-    return all(word in text for word in KEYWORDS)
+    score = 0
+
+    for word in KEYWORDS:
+
+        if word in text:
+
+            score += 1
+
+    return score >= 4
 
 
-def find_chart_pages(pdf_path):
+# ----------------------------------------------------------
+# جستجوی کل فایل
+# ----------------------------------------------------------
 
-    """
-    همه صفحاتی که نمودار باد دارند را برمی‌گرداند.
-    """
+def scan_pdf(pdf_path):
 
     doc = fitz.open(pdf_path)
 
     pages = []
 
-    for page_no in range(doc.page_count):
+    for i in range(doc.page_count):
 
-        page = doc.load_page(page_no)
+        page = doc.load_page(i)
 
-        if is_chart_page(page):
+        if page_contains_chart(page):
 
-            pages.append(page_no + 1)
+            pages.append(i + 1)
 
     doc.close()
 
     return pages
 
 
-def find_pages_for_file(pdf_path):
+# ----------------------------------------------------------
+# تعیین صفحات خروجی
+# ----------------------------------------------------------
 
-    """
-    منطق مخصوص فایل‌های خاص
-    """
+def get_output_pages(pdf_path):
 
-    pages = find_chart_pages(pdf_path)
+    base = pdf_path.stem
 
-    name = pdf_path.stem
+    if "_20" in base:
 
-    # -------------------------
-    # مسیر عسلویه
-    # -------------------------
-
-    if name.startswith("Route_Asaluyeh_Anchorage_Phase11"):
-
-        result = []
-
-        if 6 in pages:
-            result.append(6)
-
-        if 7 in pages:
-            result.append(7)
-
-        return result
+        base = base.split("_20")[0]
 
     # -------------------------
-    # مسیر سلمان
+    # فایل های مسیر
     # -------------------------
 
-    if name.startswith("Route_Lavan_Salman"):
+    if base in MULTI_PAGE:
 
-        result = []
+        return list(MULTI_PAGE[base].keys())
 
-        if 7 in pages:
-            result.append(7)
+    # -------------------------
+    # فایل های با صفحه ثابت
+    # -------------------------
 
-        if 8 in pages:
-            result.append(8)
+    if base in FIXED_PAGE:
 
-        return result
+        return [FIXED_PAGE[base]]
 
-    # سایر فایل‌ها
-    if pages:
+    # -------------------------
+    # در غیر اینصورت اسکن کن
+    # -------------------------
 
-        return [pages[0]]
+    pages = scan_pdf(pdf_path)
 
-    return []
+    return pages
+
+
+# ----------------------------------------------------------
+# چاپ نتیجه
+# ----------------------------------------------------------
+
+def print_result(pdf_path, pages):
+
+    if not VERBOSE:
+
+        return
+
+    print()
+
+    print("-" * 50)
+
+    print(pdf_path.name)
+
+    if len(pages) == 0:
+
+        print("✗ نمودار پیدا نشد")
+
+        return
+
+    for p in pages:
+
+        print(f"✓ صفحه {p}")
+
+
+# ----------------------------------------------------------
+# تابع اصلی
+# ----------------------------------------------------------
+
+def detect(pdf_path):
+
+    pages = get_output_pages(pdf_path)
+
+    print_result(pdf_path, pages)
+
+    return pages
+
+
+# ----------------------------------------------------------
+# تست
+# ----------------------------------------------------------
+
+if __name__ == "__main__":
+
+    from pathlib import Path
+
+    from config import INPUT_FOLDER
+
+    pdfs = sorted(INPUT_FOLDER.glob("*.pdf"))
+
+    print()
+
+    print("=" * 60)
+
+    print("Testing detector")
+
+    print("=" * 60)
+
+    for pdf in pdfs:
+
+        detect(pdf)
