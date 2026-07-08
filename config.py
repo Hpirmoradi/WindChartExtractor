@@ -71,7 +71,7 @@ FIXED_PAGE = {
 
     "Balal_Gas_Field":5,
 
-    "Bushehr":5,
+    "Bushehr":8,
 
     "Froozan":4,
 
@@ -87,7 +87,7 @@ FIXED_PAGE = {
 
     "Reshadat":4,
 
-    "Roudsar":5,
+    "Roudsar":4,
 
     "Shafagh":5,
 
